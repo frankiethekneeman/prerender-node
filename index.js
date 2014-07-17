@@ -27,7 +27,7 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
   } else if (prerenderedResponse) {
     prerender.afterRenderFn(req, prerenderedResponse);
     res.set(prerenderedResponse.headers);
-    return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
+    return res.send(prerenderedResponse.statusCode, prerender.bodyFilterFn(prerenderedResponse.body));
   } else {
     next();
   }
@@ -243,6 +243,10 @@ prerender.afterRenderFn = function(req, prerender_res) {
   this.afterRender(req, prerender_res);
 };
 
+prerender.bodyFilterFn = function(body) {
+    if (!this.bodyFilter) return body;
+    else return this.bodyFilter(body);
+}
 
 prerender.set = function(name, value) {
   this[name] = value;
