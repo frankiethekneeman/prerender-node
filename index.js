@@ -25,9 +25,10 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
         prerender.handleResponse(prerenderedResponse, req, res, next, ++retries);
     });
   } else if (prerenderedResponse) {
+    prerenderedResponse.body = prerender.bodyFilterFn(prerenderedResponse.body);
     prerender.afterRenderFn(req, prerenderedResponse);
     res.set(prerenderedResponse.headers);
-    return res.send(prerenderedResponse.statusCode, prerender.bodyFilterFn(prerenderedResponse.body));
+    return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
   } else {
     next();
   }
