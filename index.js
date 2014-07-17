@@ -26,6 +26,7 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
     });
   } else if (prerenderedResponse) {
     prerenderedResponse.body = prerender.bodyFilterFn(prerenderedResponse.body);
+    delete prerenderedResponse.headers['content-length'];  //Delete the declared content length so we don't trip over it.
     prerender.afterRenderFn(req, prerenderedResponse);
     res.set(prerenderedResponse.headers);
     return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
