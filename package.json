@@ -1,13 +1,13 @@
 {
   "name": "prerender-node",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "description": "express middleware for serving prerendered javascript-rendered pages for SEO",
   "author": "Todd Hooper",
   "license": "MIT",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/prerender/prerender-node"
+    "url": "git://github.com/frankiethekneeman/prerender-node"
   },
   "keywords": [
     "angular",
