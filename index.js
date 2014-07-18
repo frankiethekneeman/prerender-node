@@ -1,5 +1,6 @@
 var request = require('request')
   , url = require('url')
+  , querystring = require('querystring')
   , zlib = require('zlib');
 
 var prerender = module.exports = function(req, res, next) {
@@ -219,6 +220,11 @@ prerender.buildApiUrl = function(req) {
     protocol = this.protocol;
   }
   var fullUrl = protocol + "://" + req.get('host') + req.url;
+  if (req.query && Object.keys(req.query).length) {
+    fullUrl += '?' + querystring.stringify(req.query);
+  }
+
+
   return prerenderUrl + forwardSlash + fullUrl;
 };
 
