@@ -220,8 +220,17 @@ prerender.buildApiUrl = function(req) {
     protocol = this.protocol;
   }
   var fullUrl = protocol + "://" + req.get('host') + req.url;
-  if (req.query && Object.keys(req.query).length) {
-    fullUrl += '?' + querystring.stringify(req.query);
+  var qs = {};
+  if (req.query) {
+    Object.keys(req.query).forEach(function(key) {
+        if (key != '_escaped_fragment_') {
+            qs[key] = req.query[key];
+        }
+    });
+  }
+
+  if (Object.keys(qs).length) {
+    fullUrl += '?' + querystring.stringify(qs);
   }
 
 
