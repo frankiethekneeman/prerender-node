@@ -217,7 +217,7 @@ prerender.buildApiUrl = function(req) {
   if (this.protocol) {
     protocol = this.protocol;
   }
-  var fullUrl = protocol + "://" + req.get('host') + req.url;
+  var fullUrl = protocol + "://" + req.get('host') + url.parse(req.url, true).pathname;
   var qs = {};
   if (req.query) {
     Object.keys(req.query).forEach(function(key) {
