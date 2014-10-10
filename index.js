@@ -20,12 +20,14 @@ var prerender = module.exports = function(req, res, next) {
 };
 
 prerender.handleResponse = function(prerenderedResponse, req, res, next, retries) {
-  var shouldRetry = this.retryFn(prerenderedResponse);
+  var shouldRetry = this.retryFn(req, prerenderedResponse);
   if (shouldRetry && this.retryLimit && retries < this.retryLimit) {
     prerender.getPrerenderedPageResponse(req, function(prerenderedResponse) {
         prerender.handleResponse(prerenderedResponse, req, res, next, ++retries);
     });
   } else if (prerenderedResponse) {
+    prerenderedResponse.body = prerender.bodyFilterFn(prerenderedResponse.body);
+    delete prerenderedResponse.headers['content-length'];  //Delete the declared content length so we don't trip over it.
     prerender.afterRenderFn(req, prerenderedResponse, retries);
     res.set(prerenderedResponse.headers);
     return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
@@ -246,10 +248,10 @@ prerender.beforeRenderFn = function(req, done) {
   return this.beforeRender(req, done);
 };
 
-prerender.retryFn = function(prerender_res) {
+prerender.retryFn = function(req, prerender_res) {
   if (!this.retry) return false;
 
-  return this.retry(prerender_res);
+  return this.retry(req, prerender_res);
 };
 
 prerender.afterRenderFn = function(req, prerender_res, retries) {
@@ -258,6 +260,10 @@ prerender.afterRenderFn = function(req, prerender_res, retries) {
   this.afterRender(req, prerender_res, retries);
 };
 
+prerender.bodyFilterFn = function(body) {
+    if (!this.bodyFilter) return body;
+    else return this.bodyFilter(body);
+}
 
 prerender.set = function(name, value) {
   this[name] = value;
