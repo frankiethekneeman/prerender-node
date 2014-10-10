@@ -26,7 +26,7 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
         prerender.handleResponse(prerenderedResponse, req, res, next, ++retries);
     });
   } else if (prerenderedResponse) {
-    prerender.afterRenderFn(req, prerenderedResponse);
+    prerender.afterRenderFn(req, prerenderedResponse, retries);
     res.set(prerenderedResponse.headers);
     return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
   } else {
@@ -252,10 +252,10 @@ prerender.retryFn = function(prerender_res) {
   return this.retry(prerender_res);
 };
 
-prerender.afterRenderFn = function(req, prerender_res) {
+prerender.afterRenderFn = function(req, prerender_res, retries) {
   if (!this.afterRender) return;
 
-  this.afterRender(req, prerender_res);
+  this.afterRender(req, prerender_res, retries);
 };
 
 
