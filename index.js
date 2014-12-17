@@ -4,13 +4,18 @@ var request = require('request')
   , zlib = require('zlib');
 
 var prerender = module.exports = function(req, res, next) {
-
   if(!prerender.shouldShowPrerenderedPage(req)) return next();
 
   prerender.beforeRenderFn(req, function(err, cachedRender) {
 
-    if (!err && cachedRender && typeof cachedRender == 'string') {
-      return res.send(200, cachedRender);
+    if (!err && cachedRender) {
+      if (typeof cachedRender == 'string') {
+        res.status(200);
+        return res.send(cachedRender);
+      } else if (typeof cachedRender == 'object') {
+        res.status(cachedRender.status || 200);
+        return res.send(cachedRender.body || '');
+      }
     }
 
     prerender.getPrerenderedPageResponse(req, function(prerenderedResponse) {
@@ -30,6 +35,7 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
     delete prerenderedResponse.headers['content-length'];  //Delete the declared content length so we don't trip over it.
     prerender.afterRenderFn(req, prerenderedResponse, retries);
     res.set(prerenderedResponse.headers);
+    res.status(prerenderedResponse.statusCode)
     return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
   } else {
     next();
@@ -53,7 +59,8 @@ prerender.crawlerUserAgents = [
   'showyoubot',
   'outbrain',
   'pinterest',
-  'developers.google.com/+/web/snippet'
+  'developers.google.com/+/web/snippet',
+  'slackbot'
 ];
 
 
@@ -117,10 +124,11 @@ prerender.shouldShowPrerenderedPage = function(req) {
     , isRequestingPrerenderedPage = false;
 
   if(!userAgent) return false;
-  if(req.method != 'GET') return false;
+  if(req.method != 'GET' && req.method != 'HEAD') return false;
 
   //if it contains _escaped_fragment_, show prerendered page
-  if(url.parse(req.url, true).query.hasOwnProperty('_escaped_fragment_')) isRequestingPrerenderedPage = true;
+  var parsedQuery = url.parse(req.url, true).query;
+  if(parsedQuery && parsedQuery.hasOwnProperty('_escaped_fragment_')) isRequestingPrerenderedPage = true;
 
   //if it is a bot...show prerendered page
   if(prerender.crawlerUserAgents.some(function(crawlerUserAgent){ return userAgent.toLowerCase().indexOf(crawlerUserAgent.toLowerCase()) !== -1;})) isRequestingPrerenderedPage = true;
@@ -155,15 +163,15 @@ prerender.getPrerenderedPageResponse = function(req, callback) {
     uri: url.parse(prerender.buildApiUrl(req)),
     followRedirect: false
   };
+  options.headers = {
+    'User-Agent': req.headers['user-agent'],
+    'Accept-Encoding': 'gzip'
+  };
   if(this.prerenderToken || process.env.PRERENDER_TOKEN) {
-    options.headers = {
-      'X-Prerender-Token': this.prerenderToken || process.env.PRERENDER_TOKEN,
-      'User-Agent': req.headers['user-agent'],
-      'Accept-Encoding': 'gzip'
-    };
+    options.headers['X-Prerender-Token'] = this.prerenderToken || process.env.PRERENDER_TOKEN;
   }
 
-	request.get(options).on('response', function(response) {
+  request.get(options).on('response', function(response) {
     if(response.headers['content-encoding'] && response.headers['content-encoding'] === 'gzip') {
       prerender.gunzipResponse(response, callback);
     } else {
@@ -219,7 +227,8 @@ prerender.buildApiUrl = function(req) {
   if (this.protocol) {
     protocol = this.protocol;
   }
-  var fullUrl = protocol + "://" + req.get('host') + url.parse(req.url, true).pathname;
+
+  var fullUrl = protocol + "://" + (this.host || req.get('host')) + url.parse(req.url, true).pathname;
   var qs = {};
   if (req.query) {
     Object.keys(req.query).forEach(function(key) {
@@ -232,7 +241,6 @@ prerender.buildApiUrl = function(req) {
   if (Object.keys(qs).length) {
     fullUrl += '?' + querystring.stringify(qs);
   }
-
 
   return prerenderUrl + forwardSlash + fullUrl;
 };
