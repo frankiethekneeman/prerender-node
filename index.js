@@ -39,7 +39,7 @@ prerender.handleResponse = function(prerenderedResponse, req, res, next, retries
     res.status(prerenderedResponse.statusCode)
     return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
   } else {
-    next();
+    return res.send(502, "The Prerender Server returned an erroneous response.");
   }
 }
 
@@ -184,7 +184,8 @@ prerender.getPrerenderedPageResponse = function(req, callback) {
       prerender.plainResponse(response, callback);
     }
   }).on('error', function() {
-    callback(null);
+    if (callback) callback(null);
+    callback = null;
   });
 };
 
