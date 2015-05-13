@@ -1,6 +1,7 @@
 var request = require('request')
   , url = require('url')
   , querystring = require('querystring')
+  , merge = require('merge')
   , zlib = require('zlib');
 
 var prerender = module.exports = function(req, res, next) {
@@ -171,6 +172,9 @@ prerender.getPrerenderedPageResponse = function(req, callback) {
   };
   if(this.prerenderToken || process.env.PRERENDER_TOKEN) {
     options.headers['X-Prerender-Token'] = this.prerenderToken || process.env.PRERENDER_TOKEN;
+  }
+  if (typeof this.requestOptions == 'object') {
+    options = merge.recursive(true, options, this.requestOptions);
   }
 
   request.get(options).on('response', function(response) {
