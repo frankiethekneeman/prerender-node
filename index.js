@@ -26,18 +26,29 @@ var prerender = module.exports = function(req, res, next) {
 };
 
 prerender.handleResponse = function(prerenderedResponse, req, res, next, retries) {
-  var shouldRetry = this.retryFn(req, prerenderedResponse);
+  var retryIndicated = this.retryFn(req, prerenderedResponse);
+  if (prerenderedResponse) {
+      prerenderedResponse.score = this.scoreFn(req, prerenderedResponse);
+      if (!prerenderedResponse.best || prerenderedResponse.best.score > prerenderedResponse.score)
+        prerenderedResponse.best = prerenderedResponse;
+  }
+  var shouldRetry = retryIndicated || !prerenderedResponse || (prerenderedResponse && prerenderedResponse.best.score > 0);
   if (shouldRetry && this.retryLimit && retries < this.retryLimit) {
+    var best = prerenderedResponse ? prerenderedResponse.best: undefined;
     prerender.getPrerenderedPageResponse(req, function(prerenderedResponse) {
+        if (!prerenderedResponse) {
+            prerenderedResponse = {};
+        }
+        prerenderedResponse.best = best;
         prerender.handleResponse(prerenderedResponse, req, res, next, ++retries);
     });
-  } else if (prerenderedResponse) {
-    prerenderedResponse.body = prerender.bodyFilterFn(prerenderedResponse.body);
-    delete prerenderedResponse.headers['content-length'];  //Delete the declared content length so we don't trip over it.
-    prerender.afterRenderFn(req, prerenderedResponse, retries);
-    res.set(prerenderedResponse.headers);
-    res.status(prerenderedResponse.statusCode)
-    return res.send(prerenderedResponse.statusCode, prerenderedResponse.body);
+  } else if (prerenderedResponse && prerenderedResponse.best && !(this.maxValidScore && prerenderedResponse.best.score > this.maxValidScore)) {
+    prerenderedResponse.best.body = prerender.bodyFilterFn(prerenderedResponse.best.body);
+    delete prerenderedResponse.best.headers['content-length'];  //Delete the declared content length so we don't trip over it.
+    prerender.afterRenderFn(req, prerenderedResponse.best, retries);
+    res.set(prerenderedResponse.best.headers);
+    res.status(prerenderedResponse.best.statusCode)
+    return res.send(prerenderedResponse.best.statusCode, prerenderedResponse.best.body);
   } else {
     return res.send(502, "The Prerender Server returned an erroneous response.");
   }
@@ -261,6 +272,12 @@ prerender.beforeRenderFn = function(req, done) {
   if (!this.beforeRender) return done();
 
   return this.beforeRender(req, done);
+};
+
+prerender.scoreFn = function(req, prerender_res) {
+  if (!this.score) return -1;
+
+  return this.score(req, prerender_res);
 };
 
 prerender.retryFn = function(req, prerender_res) {
